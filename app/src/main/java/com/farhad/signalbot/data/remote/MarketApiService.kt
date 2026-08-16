@@ -1,15 +1,26 @@
 package com.farhad.signalbot.data.remote
 
 import retrofit2.http.GET
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface MarketApiService {
 
-    @GET("v2/aggs/ticker/{ticker}/range/1/minute/1/day")
-    suspend fun getMinuteBars(
-        @retrofit2.http.Path("ticker") ticker: String,
-        @Query("adjusted") adjusted: Boolean = true,
-        @Query("sort") sort: String = "asc",
-        @Query("limit") limit: Int = 500
-    ): PolygonBarsResponse
+    @GET("api/v3/ticker/24hr")
+    suspend fun ticker24h(
+        @Query("symbol")
+        symbol: String
+    ): MarketTickerDto
+
+    @GET("api/v3/klines")
+    suspend fun candles(
+        @Query("symbol")
+        symbol: String,
+
+        @Query("interval")
+        interval: String,
+
+        @Query("limit")
+        limit: Int = 200
+    ): List<List<Any>>
 }
