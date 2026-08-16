@@ -1,0 +1,60 @@
+package com.farhad.signalbot.data.remote
+
+import retrofit2.HttpException
+import java.io.IOException
+
+class MarketApiClient(
+    private val service: MarketApiService
+) {
+
+    suspend fun getMinuteBars(
+        symbol: String,
+        limit: Int = 200
+    ): Result<PolygonBarsResponse> {
+        return try {
+            val response = service.getMinuteBars(
+                ticker = symbol,
+                limit = limit.coerceIn(1, 500)
+            )
+
+            when {
+                response.error != null -> {
+                    Result.failure(
+                        MarketApiException.InvalidResponse(
+                            response.error
+                        )
+                    )
+                }
+
+                response.results.isEmpty() -> {
+                    Result.failure(
+                        MarketApiException.InvalidResponse(
+                            "No market candles were returned."
+                        )
+                    )
+                }
+
+                else -> Result.success(response)
+            }
+        } catch (e: HttpException) {
+            Result.failure(
+                when (e.code()) {
+                    401, 403 -> MarketApiException.Unauthorized()
+                    429 -> MarketApiException.RateLimited()
+                    in 500..599 ->
+                        MarketApiException.Server(
+                            "Market-data server error: ${e.code()}"
+                        )
+                    else ->
+                        MarketApiException.Server(
+                            "Market-data request failed: ${e.code()}"
+                        )
+                }
+            )
+        } catch (e: IOException) {
+            Result.failure(MarketApiException.Network(e))
+        } catch (e: Exception) {
+            Result.failure(MarketApiException.Unknown(e))
+        }
+    }
+}
