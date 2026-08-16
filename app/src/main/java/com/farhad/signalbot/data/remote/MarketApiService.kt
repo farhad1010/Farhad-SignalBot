@@ -6,21 +6,13 @@ import retrofit2.http.Query
 
 interface MarketApiService {
 
-    @GET("api/v3/ticker/24hr")
-    suspend fun ticker24h(
-        @Query("symbol")
-        symbol: String
-    ): MarketTickerDto
-
-    @GET("api/v3/klines")
-    suspend fun candles(
-        @Query("symbol")
-        symbol: String,
-
-        @Query("interval")
-        interval: String,
-
-        @Query("limit")
-        limit: Int = 200
-    ): List<List<Any>>
+    @GET("v2/aggs/ticker/{ticker}/range/1/minute/{from}/{to}")
+    suspend fun getMinuteBars(
+        @Path("ticker") ticker: String,
+        @Path("from") from: String,
+        @Path("to") to: String,
+        @Query("adjusted") adjusted: Boolean = true,
+        @Query("sort") sort: String = "asc",
+        @Query("limit") limit: Int = 500
+    ): PolygonBarsResponse
 }
