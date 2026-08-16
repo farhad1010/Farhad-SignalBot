@@ -2,6 +2,8 @@ package com.farhad.signalbot.data.remote
 
 import retrofit2.HttpException
 import java.io.IOException
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 class MarketApiClient(
     private val service: MarketApiService
@@ -11,10 +13,22 @@ class MarketApiClient(
         symbol: String,
         limit: Int = 200
     ): Result<PolygonBarsResponse> {
+
         return try {
+
+            val safeLimit = limit.coerceIn(50, 500)
+
+            val today = LocalDate.now(ZoneOffset.UTC)
+            val from = today.minusDays(5)
+            val to = today
+
             val response = service.getMinuteBars(
                 ticker = symbol,
-                limit = limit.coerceIn(1, 500)
+                from = from.toString(),
+                to = to.toString(),
+                adjusted = true,
+                sort = "asc",
+                limit = safeLimit
             )
 
             when {
@@ -29,32 +43,51 @@ class MarketApiClient(
                 response.results.isEmpty() -> {
                     Result.failure(
                         MarketApiException.InvalidResponse(
-                            "No market candles were returned."
+                            response.message
+                                ?: "No market candles were returned."
                         )
                     )
                 }
 
-                else -> Result.success(response)
+                else -> {
+                    Result.success(response)
+                }
             }
+
         } catch (e: HttpException) {
+
             Result.failure(
                 when (e.code()) {
-                    401, 403 -> MarketApiException.Unauthorized()
-                    429 -> MarketApiException.RateLimited()
+
+                    401, 403 ->
+                        MarketApiException.Unauthorized()
+
+                    429 ->
+                        MarketApiException.RateLimited()
+
                     in 500..599 ->
                         MarketApiException.Server(
                             "Market-data server error: ${e.code()}"
                         )
+
                     else ->
                         MarketApiException.Server(
                             "Market-data request failed: ${e.code()}"
                         )
                 }
             )
+
         } catch (e: IOException) {
-            Result.failure(MarketApiException.Network(e))
+
+            Result.failure(
+                MarketApiException.Network(e)
+            )
+
         } catch (e: Exception) {
-            Result.failure(MarketApiException.Unknown(e))
+
+            Result.failure(
+                MarketApiException.Unknown(e)
+            )
         }
     }
 }
