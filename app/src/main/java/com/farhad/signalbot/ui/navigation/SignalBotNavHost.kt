@@ -18,36 +18,55 @@ fun SignalBotNavHost(
 ) {
     NavHost(
         navController = navController,
-        startDestination =
-            AppDestination.Dashboard.route
+        startDestination = AppDestination.Dashboard.route
     ) {
 
+        /*
+         * Main real-time market dashboard.
+         *
+         * This screen receives both the application
+         * container and persistent signal-history repository.
+         */
         composable(
-            AppDestination.Dashboard.route
+            route = AppDestination.Dashboard.route
         ) {
             SignalDashboardScreen(
-                container = container
+                container = container,
+                historyRepository = historyRepository
             )
         }
 
+        /*
+         * Dedicated Signals screen.
+         *
+         * It uses the same real market-analysis pipeline,
+         * but is a separate navigation destination.
+         */
         composable(
-            AppDestination.Signals.route
+            route = AppDestination.Signals.route
         ) {
             SignalDashboardScreen(
-                container = container
+                container = container,
+                historyRepository = historyRepository
             )
         }
 
+        /*
+         * Persistent signal history.
+         */
         composable(
-            AppDestination.History.route
+            route = AppDestination.History.route
         ) {
             HistoryScreen(
                 repository = historyRepository
             )
         }
 
+        /*
+         * Application settings.
+         */
         composable(
-            AppDestination.Settings.route
+            route = AppDestination.Settings.route
         ) {
             SettingsScreen()
         }
