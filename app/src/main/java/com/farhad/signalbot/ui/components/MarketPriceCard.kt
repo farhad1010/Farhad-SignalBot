@@ -21,32 +21,71 @@ fun MarketPriceCard(
     changePercent: Double?,
     modifier: Modifier = Modifier
 ) {
+
     Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor =
-                MaterialTheme.colorScheme.surface
-        )
+        modifier =
+            modifier.fillMaxWidth(),
+
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    MaterialTheme
+                        .colorScheme
+                        .surface
+            )
     ) {
+
         Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier =
+                Modifier.padding(22.dp),
+
+            verticalArrangement =
+                Arrangement.spacedBy(10.dp)
         ) {
 
-            Text(
-                text = symbol,
-                style = MaterialTheme.typography.titleMedium
-            )
+            Row(
+                modifier =
+                    Modifier.fillMaxWidth(),
+
+                horizontalArrangement =
+                    Arrangement.SpaceBetween
+            ) {
+
+                Text(
+                    text = symbol,
+
+                    style =
+                        MaterialTheme
+                            .typography
+                            .headlineSmall
+                )
+
+                Text(
+                    text = "LIVE ●",
+
+                    color =
+                        MaterialTheme
+                            .colorScheme
+                            .primary
+                )
+            }
 
             Text(
-                text = price?.let {
-                    String.format(
-                        Locale.US,
-                        "%.4f",
-                        it
-                    )
-                } ?: "--",
-                style = MaterialTheme.typography.headlineLarge
+                text =
+                    price?.let {
+
+                        String.format(
+                            Locale.US,
+                            "%.5f",
+                            it
+                        )
+
+                    } ?: "--",
+
+                style =
+                    MaterialTheme
+                        .typography
+                        .displaySmall
             )
 
             Row(
@@ -55,17 +94,20 @@ fun MarketPriceCard(
             ) {
 
                 Text(
-                    text = "24h movement"
+                    "LIVE MOVEMENT"
                 )
 
                 Text(
-                    text = changePercent?.let {
-                        String.format(
-                            Locale.US,
-                            "%+.2f%%",
-                            it
-                        )
-                    } ?: "--"
+                    text =
+                        changePercent?.let {
+
+                            String.format(
+                                Locale.US,
+                                "%+.3f%%",
+                                it
+                            )
+
+                        } ?: "--"
                 )
             }
         }
