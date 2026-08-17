@@ -10,15 +10,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val application =
+        val app =
             application as SignalBotApplication
 
         setContent {
-
             SignalBotApp(
-                container = application.appContainer,
-                historyRepository =
-                    application.historyRepository
+                container = app.appContainer,
+                historyRepository = app.historyRepository
             )
         }
     }
