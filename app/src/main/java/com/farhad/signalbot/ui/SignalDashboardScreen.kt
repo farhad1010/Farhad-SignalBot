@@ -2,7 +2,6 @@ package com.farhad.signalbot.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -32,7 +31,7 @@ fun SignalDashboardScreen(
     modifier: Modifier = Modifier
 ) {
 
-    val viewModel:
+    val dashboardViewModel:
         SignalDashboardViewModel =
         viewModel(
             factory =
@@ -44,19 +43,19 @@ fun SignalDashboardScreen(
         )
 
     val state by
-        viewModel.state.collectAsState()
+        dashboardViewModel.state.collectAsState()
 
     val snapshot =
         when (
-            val signal =
+            val signalState =
                 state.signalState
         ) {
 
             is SignalState.Ready ->
-                signal.analysis
+                signalState.analysis
 
             is SignalState.NoSignal ->
-                signal.analysis
+                signalState.analysis
 
             else ->
                 null
@@ -76,19 +75,17 @@ fun SignalDashboardScreen(
     ) {
 
         Text(
-            text = "FARHAD SIGNALBOT",
+            text = "SignalBot",
             style =
-                MaterialTheme
-                    .typography
+                MaterialTheme.typography
                     .headlineMedium
         )
 
         Text(
             text =
-                "Real market-data analysis",
+                "Real Market Intelligence",
             style =
-                MaterialTheme
-                    .typography
+                MaterialTheme.typography
                     .bodyMedium
         )
 
@@ -107,62 +104,39 @@ fun SignalDashboardScreen(
         )
 
         TechnicalMetricsCard(
-            snapshot =
-                snapshot
+            snapshot = snapshot
         )
 
-        Row(
+        Button(
             modifier =
                 Modifier.fillMaxWidth(),
-            horizontalArrangement =
-                Arrangement.spacedBy(10.dp)
+
+            enabled =
+                !state.isRefreshing,
+
+            onClick =
+                dashboardViewModel::refreshNow
         ) {
 
-            Button(
-                modifier =
-                    Modifier.weight(1f),
-                enabled =
-                    !state.isRefreshing,
-                onClick =
-                    viewModel::refreshNow
-            ) {
+            if (state.isRefreshing) {
 
-                if (
-                    state.isRefreshing
-                ) {
+                CircularProgressIndicator()
 
-                    CircularProgressIndicator()
+            } else {
 
-                } else {
-
-                    Text(
-                        text =
-                            "Refresh"
-                    )
-                }
+                Text(
+                    text =
+                        "Refresh Market"
+                )
             }
         }
-
-        Text(
-            text =
-                "Signals are generated from " +
-                    "market data and technical " +
-                    "indicators. They are not " +
-                    "guaranteed trade outcomes.",
-            style =
-                MaterialTheme
-                    .typography
-                    .bodySmall
-        )
 
         state.errorMessage?.let { error ->
 
             Text(
                 text = error,
                 color =
-                    MaterialTheme
-                        .colorScheme
-                        .error
+                    MaterialTheme.colorScheme.error
             )
         }
     }
