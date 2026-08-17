@@ -7,12 +7,9 @@ import retrofit2.http.Query
 interface MarketApiService {
 
     @GET(
-        "v2/aggs/ticker/" +
-            "{ticker}/range/" +
-            "{multiplier}/{timespan}/" +
-            "{from}/{to}"
+        "v2/aggs/ticker/{ticker}/range/{multiplier}/{timespan}/{from}/{to}"
     )
-    suspend fun getMinuteBars(
+    suspend fun getBars(
         @Path("ticker")
         ticker: String,
 
@@ -20,7 +17,7 @@ interface MarketApiService {
         multiplier: Int = 1,
 
         @Path("timespan")
-        timespan: String = "minute",
+        timespan: String = "second",
 
         @Path("from")
         from: String,
@@ -32,9 +29,20 @@ interface MarketApiService {
         adjusted: Boolean = false,
 
         @Query("sort")
-        sort: String = "asc",
+        sort: String = "desc",
 
         @Query("limit")
         limit: Int = 5000
+    ): PolygonBarsResponse
+
+    @GET(
+        "v2/aggs/ticker/{ticker}/prev"
+    )
+    suspend fun getPreviousDayBar(
+        @Path("ticker")
+        ticker: String,
+
+        @Query("adjusted")
+        adjusted: Boolean = false
     ): PolygonBarsResponse
 }
