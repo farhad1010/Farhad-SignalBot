@@ -11,30 +11,53 @@ class MarketDataRepository(
 
     suspend fun getCandles(
         symbol: TradingSymbol,
-        limit: Int = 200
+        limit: Int = 5000
     ): Result<List<MarketCandle>> {
 
-        return apiClient.getMinuteBars(
-            symbol = symbol.providerSymbol,
-            limit = limit
-        ).map { response ->
+        return apiClient
+            .getSecondBars(
+                symbol = symbol.providerSymbol,
+                limit = limit
+            )
+            .map { response ->
 
-            response.results
-                .sortedBy { it.timestampMillis }
-                .map { bar ->
+                response.results
+                    .sortedBy {
+                        it.timestampMillis
+                    }
+                    .map { bar ->
 
-                    val openTime = Instant.ofEpochMilli(bar.timestampMillis)
+                        val openTime =
+                            Instant.ofEpochMilli(
+                                bar.timestampMillis
+                            )
 
-                    MarketCandle(
-                        openTime = openTime,
-                        closeTime = openTime.plusSeconds(60),
-                        open = bar.open,
-                        high = bar.high,
-                        low = bar.low,
-                        close = bar.close,
-                        volume = bar.volume
-                    )
-                }
-        }
+                        MarketCandle(
+                            openTime = openTime,
+
+                            closeTime =
+                                openTime.plusSeconds(1),
+
+                            open = bar.open,
+
+                            high = bar.high,
+
+                            low = bar.low,
+
+                            close = bar.close,
+
+                            volume = bar.volume
+                        )
+                    }
+            }
+    }
+
+    suspend fun getPreviousDayClose(
+        symbol: TradingSymbol
+    ): Result<Double> {
+
+        return apiClient.getPreviousDayClose(
+            symbol.providerSymbol
+        )
     }
 }
