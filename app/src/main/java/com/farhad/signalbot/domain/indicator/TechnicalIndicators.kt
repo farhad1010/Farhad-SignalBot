@@ -1,70 +1,173 @@
 package com.farhad.signalbot.domain.indicator
 
 import kotlin.math.abs
+import kotlin.math.max
 
 object TechnicalIndicators {
 
-    fun sma(values: List<Double>, period: Int): Double? {
-        if (period <= 0 || values.size < period) return null
+    fun sma(
+        values: List<Double>,
+        period: Int
+    ): Double? {
+
+        if (
+            period <= 0 ||
+            values.size < period
+        ) return null
 
         return values
             .takeLast(period)
             .average()
     }
 
-    fun ema(values: List<Double>, period: Int): Double? {
-        if (period <= 0 || values.size < period) return null
+    fun ema(
+        values: List<Double>,
+        period: Int
+    ): Double? {
 
-        val multiplier = 2.0 / (period + 1)
+        if (
+            period <= 0 ||
+            values.size < period
+        ) return null
 
-        var ema = values
-            .take(period)
-            .average()
+        val multiplier =
+            2.0 / (period + 1)
 
-        for (index in period until values.size) {
-            ema = ((values[index] - ema) * multiplier) + ema
+        var result =
+            values
+                .take(period)
+                .average()
+
+        for (
+            i in period until values.size
+        ) {
+            result =
+                (
+                    (values[i] - result) *
+                        multiplier
+                    ) + result
         }
 
-        return ema
+        return result
     }
 
-    fun rsi(values: List<Double>, period: Int = 14): Double? {
-        if (period <= 0 || values.size <= period) return null
+    fun rsi(
+        values: List<Double>,
+        period: Int = 14
+    ): Double? {
+
+        if (
+            period <= 0 ||
+            values.size <= period
+        ) return null
 
         var gains = 0.0
         var losses = 0.0
 
         for (i in 1..period) {
-            val change = values[i] - values[i - 1]
 
-            if (change > 0) {
+            val change =
+                values[i] -
+                    values[i - 1]
+
+            if (change >= 0) {
                 gains += change
             } else {
                 losses += abs(change)
             }
         }
 
-        var averageGain = gains / period
-        var averageLoss = losses / period
+        var avgGain =
+            gains / period
 
-        for (i in (period + 1) until values.size) {
-            val change = values[i] - values[i - 1]
+        var avgLoss =
+            losses / period
 
-            val gain = if (change > 0) change else 0.0
-            val loss = if (change < 0) abs(change) else 0.0
+        for (
+            i in period + 1 until values.size
+        ) {
 
-            averageGain =
-                ((averageGain * (period - 1)) + gain) / period
+            val change =
+                values[i] -
+                    values[i - 1]
 
-            averageLoss =
-                ((averageLoss * (period - 1)) + loss) / period
+            val gain =
+                max(change, 0.0)
+
+            val loss =
+                max(-change, 0.0)
+
+            avgGain =
+                (
+                    avgGain *
+                        (period - 1) +
+                        gain
+                    ) / period
+
+            avgLoss =
+                (
+                    avgLoss *
+                        (period - 1) +
+                        loss
+                    ) / period
         }
 
-        if (averageLoss == 0.0) return 100.0
+        if (avgLoss == 0.0) {
+            return 100.0
+        }
 
-        val relativeStrength = averageGain / averageLoss
+        val rs =
+            avgGain / avgLoss
 
-        return 100.0 - (100.0 / (1.0 + relativeStrength))
+        return 100.0 -
+            (100.0 / (1.0 + rs))
+    }
+
+    fun atr(
+        candles: List<com.farhad.signalbot.core.model.MarketCandle>,
+        period: Int = 14
+    ): Double? {
+
+        if (
+            candles.size <= period
+        ) return null
+
+        val trueRanges =
+            mutableListOf<Double>()
+
+        for (i in 1 until candles.size) {
+
+            val current =
+                candles[i]
+
+            val previous =
+                candles[i - 1]
+
+            val tr =
+                max(
+                    current.high -
+                        current.low,
+
+                    max(
+                        abs(
+                            current.high -
+                                previous.close
+                        ),
+
+                        abs(
+                            current.low -
+                                previous.close
+                        )
+                    )
+                )
+
+            trueRanges += tr
+        }
+
+        return sma(
+            trueRanges,
+            period
+        )
     }
 
     fun macd(
@@ -73,8 +176,19 @@ object TechnicalIndicators {
         slowPeriod: Int = 26
     ): Double? {
 
-        val fast = ema(values, fastPeriod) ?: return null
-        val slow = ema(values, slowPeriod) ?: return null
+        val fast =
+            ema(
+                values,
+                fastPeriod
+            )
+                ?: return null
+
+        val slow =
+            ema(
+                values,
+                slowPeriod
+            )
+                ?: return null
 
         return fast - slow
     }
@@ -86,21 +200,46 @@ object TechnicalIndicators {
         signalPeriod: Int = 9
     ): Double? {
 
-        if (values.size < slowPeriod + signalPeriod) return null
+        if (
+            values.size <
+            slowPeriod +
+            signalPeriod
+        ) return null
 
-        val macdValues = mutableListOf<Double>()
+        val macdValues =
+            mutableListOf<Double>()
 
-        for (end in slowPeriod..values.size) {
-            val slice = values.take(end)
+        for (
+            end in slowPeriod..values.size
+        ) {
 
-            val fast = ema(slice, fastPeriod)
-            val slow = ema(slice, slowPeriod)
+            val slice =
+                values.take(end)
 
-            if (fast != null && slow != null) {
-                macdValues += fast - slow
+            val fast =
+                ema(
+                    slice,
+                    fastPeriod
+                )
+
+            val slow =
+                ema(
+                    slice,
+                    slowPeriod
+                )
+
+            if (
+                fast != null &&
+                slow != null
+            ) {
+                macdValues +=
+                    fast - slow
             }
         }
 
-        return ema(macdValues, signalPeriod)
+        return ema(
+            macdValues,
+            signalPeriod
+        )
     }
 }
