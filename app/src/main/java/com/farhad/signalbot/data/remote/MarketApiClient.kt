@@ -9,63 +9,58 @@ class MarketApiClient(
     private val service: MarketApiService
 ) {
 
-    suspend fun getMinuteBars(
+    suspend fun getSecondBars(
         symbol: String,
-        limit: Int = 500
+        limit: Int = 5000
     ): Result<PolygonBarsResponse> {
 
         return try {
 
-            val today =
-                LocalDate.now(
-                    ZoneOffset.UTC
-                )
+            val today = LocalDate.now(ZoneOffset.UTC)
 
-            val from =
-                today.minusDays(7)
-
-            val response =
-                service.getMinuteBars(
-                    ticker = symbol,
-                    multiplier = 1,
-                    timespan = "minute",
-                    from = from.toString(),
-                    to = today.toString(),
-                    adjusted = false,
-                    sort = "asc",
-                    limit =
-                        limit.coerceIn(
-                            100,
-                            5000
-                        )
-                )
+            val response = service.getBars(
+                ticker = symbol,
+                multiplier = 1,
+                timespan = "second",
+                from = today.minusDays(2).toString(),
+                to = today.toString(),
+                adjusted = false,
+                sort = "desc",
+                limit = limit.coerceIn(100, 5000)
+            )
 
             when {
 
-                response.results.isEmpty() ->
-                    Result.failure(
-                        MarketApiException.InvalidResponse(
-                            response.message
-                                ?: "No market data returned."
-                        )
-                    )
-
-                response.error != null ->
+                response.error != null -> {
                     Result.failure(
                         MarketApiException.InvalidResponse(
                             response.error
                         )
                     )
+                }
 
-                else ->
-                    Result.success(
-                        response
+                response.results.isEmpty() -> {
+                    Result.failure(
+                        MarketApiException.InvalidResponse(
+                            response.message
+                                ?: "No live market data returned."
+                        )
                     )
+                }
+
+                else -> {
+                    Result.success(
+                        response.copy(
+                            results = response.results
+                                .sortedBy {
+                                    it.timestampMillis
+                                }
+                        )
+                    )
+                }
             }
 
-        } catch (
-            e: HttpException
-        ) {
+        } catch (e: HttpException) {
 
             Result.failure(
                 when (e.code()) {
@@ -88,17 +83,76 @@ class MarketApiClient(
                 }
             )
 
-        } catch (
-            e: IOException
-        ) {
+        } catch (e: IOException) {
+
+            Result.failure(
+                MarketApiException.Network(e)
+
+            )
+
+        } catch (e: Exception) {
+
+            Result.failure(
+                MarketApiException.Unknown(e)
+            )
+        }
+    }
+
+    suspend fun getPreviousDayClose(
+        symbol: String
+    ): Result<Double> {
+
+        return try {
+
+            val response =
+                service.getPreviousDayBar(
+                    ticker = symbol,
+                    adjusted = false
+                )
+
+            val close =
+                response.results
+                    .firstOrNull()
+                    ?.close
+
+            if (close == null || close <= 0.0) {
+
+                Result.failure(
+                    MarketApiException.InvalidResponse(
+                        "Previous market close unavailable."
+                    )
+                )
+
+            } else {
+
+                Result.success(close)
+            }
+
+        } catch (e: HttpException) {
+
+            Result.failure(
+                when (e.code()) {
+
+                    401, 403 ->
+                        MarketApiException.Unauthorized()
+
+                    429 ->
+                        MarketApiException.RateLimited()
+
+                    else ->
+                        MarketApiException.Server(
+                            "Previous close HTTP ${e.code()}"
+                        )
+                }
+            )
+
+        } catch (e: IOException) {
 
             Result.failure(
                 MarketApiException.Network(e)
             )
 
-        } catch (
-            e: Exception
-        ) {
+        } catch (e: Exception) {
 
             Result.failure(
                 MarketApiException.Unknown(e)
