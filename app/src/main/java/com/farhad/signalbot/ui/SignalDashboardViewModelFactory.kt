@@ -3,9 +3,11 @@ package com.farhad.signalbot.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.farhad.signalbot.core.di.AppContainer
+import com.farhad.signalbot.data.SignalHistoryRepository
 
 class SignalDashboardViewModelFactory(
-    private val container: AppContainer
+    private val container: AppContainer,
+    private val historyRepository: SignalHistoryRepository
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -13,12 +15,16 @@ class SignalDashboardViewModelFactory(
         modelClass: Class<T>
     ): T {
 
-        if (modelClass.isAssignableFrom(
+        if (
+            modelClass.isAssignableFrom(
                 SignalDashboardViewModel::class.java
             )
         ) {
+
             return SignalDashboardViewModel(
-                container
+                container = container,
+                historyRepository =
+                    historyRepository
             ) as T
         }
 
