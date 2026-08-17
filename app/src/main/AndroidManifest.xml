@@ -6,7 +6,8 @@
 
     <application
         android:name=".SignalBotApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
         android:label="Farhad SignalBot"
         android:supportsRtl="true"
         android:theme="@style/Theme.FarhadSignalBot">
