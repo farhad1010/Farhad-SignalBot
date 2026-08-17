@@ -3,47 +3,41 @@ package com.farhad.signalbot.core.model
 object SupportedSymbols {
 
     val all: List<TradingSymbol> = listOf(
-
         TradingSymbol(
-            id = "AAPL",
-            displayName = "Apple",
-            providerSymbol = "AAPL",
+            id = "EURUSD",
+            displayName = "EUR/USD",
+            providerSymbol = "C:EURUSD",
             quoteCurrency = "USD"
         ),
-
         TradingSymbol(
-            id = "MSFT",
-            displayName = "Microsoft",
-            providerSymbol = "MSFT",
+            id = "GBPUSD",
+            displayName = "GBP/USD",
+            providerSymbol = "C:GBPUSD",
             quoteCurrency = "USD"
         ),
-
         TradingSymbol(
-            id = "NVDA",
-            displayName = "NVIDIA",
-            providerSymbol = "NVDA",
+            id = "USDJPY",
+            displayName = "USD/JPY",
+            providerSymbol = "C:USDJPY",
+            quoteCurrency = "JPY"
+        ),
+        TradingSymbol(
+            id = "AUDUSD",
+            displayName = "AUD/USD",
+            providerSymbol = "C:AUDUSD",
             quoteCurrency = "USD"
         ),
-
         TradingSymbol(
-            id = "TSLA",
-            displayName = "Tesla",
-            providerSymbol = "TSLA",
-            quoteCurrency = "USD"
+            id = "USDCAD",
+            displayName = "USD/CAD",
+            providerSymbol = "C:USDCAD",
+            quoteCurrency = "CAD"
         ),
-
         TradingSymbol(
-            id = "AMZN",
-            displayName = "Amazon",
-            providerSymbol = "AMZN",
-            quoteCurrency = "USD"
-        ),
-
-        TradingSymbol(
-            id = "GOOGL",
-            displayName = "Alphabet",
-            providerSymbol = "GOOGL",
-            quoteCurrency = "USD"
+            id = "USDCHF",
+            displayName = "USD/CHF",
+            providerSymbol = "C:USDCHF",
+            quoteCurrency = "CHF"
         )
     )
 }
