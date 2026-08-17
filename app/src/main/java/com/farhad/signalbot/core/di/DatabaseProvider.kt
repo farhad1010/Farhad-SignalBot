@@ -7,20 +7,28 @@ import com.farhad.signalbot.data.local.SignalDatabase
 object DatabaseProvider {
 
     @Volatile
-    private var INSTANCE: SignalDatabase? = null
+    private var instance: SignalDatabase? = null
 
-    fun get(context: Context): SignalDatabase {
-        return INSTANCE ?: synchronized(this) {
-            INSTANCE ?: Room.databaseBuilder(
-                context.applicationContext,
-                SignalDatabase::class.java,
-                DATABASE_NAME
-            )
-                .fallbackToDestructiveMigration()
-                .build()
-                .also { INSTANCE = it }
-        }
+    fun get(
+        context: Context
+    ): SignalDatabase {
+
+        return instance
+            ?: synchronized(this) {
+
+                instance
+                    ?: Room.databaseBuilder(
+                        context.applicationContext,
+                        SignalDatabase::class.java,
+                        DATABASE_NAME
+                    )
+                        .build()
+                        .also {
+                            instance = it
+                        }
+            }
     }
 
-    private const val DATABASE_NAME = "signalbot.db"
+    private const val DATABASE_NAME =
+        "signalbot.db"
 }
