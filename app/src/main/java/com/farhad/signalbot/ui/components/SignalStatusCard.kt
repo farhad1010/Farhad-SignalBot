@@ -1,5 +1,6 @@
 package com.farhad.signalbot.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.farhad.signalbot.core.model.SignalDirection
 import com.farhad.signalbot.core.model.SignalState
@@ -22,100 +24,213 @@ fun SignalStatusCard(
     state: SignalState,
     modifier: Modifier = Modifier
 ) {
+
+    val accent =
+        when (state) {
+
+            is SignalState.Ready -> {
+                when (
+                    state.signal.direction
+                ) {
+
+                    SignalDirection.CALL ->
+                        Color(0xFF00E676)
+
+                    SignalDirection.PUT ->
+                        Color(0xFFFF5252)
+
+                    SignalDirection.NEUTRAL ->
+                        Color(0xFFFFC107)
+                }
+            }
+
+            is SignalState.NoSignal ->
+                Color(0xFFFFC107)
+
+            is SignalState.Error ->
+                Color(0xFFFF5252)
+
+            else ->
+                MaterialTheme
+                    .colorScheme
+                    .primary
+        }
+
     Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor =
-                MaterialTheme.colorScheme.surface
-        )
+        modifier =
+            modifier.fillMaxWidth(),
+
+        shape =
+            RoundedCornerShape(28.dp),
+
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    Color(0xFF111522)
+            )
     ) {
+
         Column(
-            modifier = Modifier.padding(22.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier =
+                Modifier.padding(24.dp),
+
+            verticalArrangement =
+                Arrangement.spacedBy(16.dp)
         ) {
 
             Text(
-                text = "AI MARKET SIGNAL",
-                style = MaterialTheme.typography.labelLarge
+                text =
+                    "AI MARKET SIGNAL",
+
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelLarge
             )
 
             when (state) {
 
                 SignalState.Idle -> {
-                    Text("Waiting for market data")
+
+                    Text(
+                        "Waiting for live market data"
+                    )
                 }
 
                 SignalState.Loading -> {
-                    Text("Analyzing live market data…")
+
+                    Text(
+                        "Analyzing live market data..."
+                    )
                 }
 
                 is SignalState.Error -> {
+
                     Text(
                         text = state.message,
-                        color = MaterialTheme.colorScheme.error
+                        color = accent
                     )
                 }
 
                 is SignalState.NoSignal -> {
+
                     Text(
                         text = "NO TRADE",
-                        style = MaterialTheme.typography.headlineMedium
+                        color = accent,
+                        style =
+                            MaterialTheme
+                                .typography
+                                .headlineLarge
                     )
 
                     Text(
-                        text = "Market conditions are not strong enough."
+                        "Market conditions are not strong enough."
                     )
                 }
 
                 is SignalState.Ready -> {
 
-                    val signal = state.signal
+                    val signal =
+                        state.signal
 
                     Text(
-                        text = when (signal.direction) {
-                            SignalDirection.CALL -> "CALL"
-                            SignalDirection.PUT -> "PUT"
-                            SignalDirection.NEUTRAL -> "NO TRADE"
-                        },
-                        style = MaterialTheme.typography.headlineLarge
-                    )
+                        text =
+                            when (
+                                signal.direction
+                            ) {
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement =
-                            Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            "Confidence"
-                        )
+                                SignalDirection.CALL ->
+                                    "UP"
 
-                        Text(
-                            "${signal.confidence.toInt()}%"
-                        )
-                    }
+                                SignalDirection.PUT ->
+                                    "DOWN"
 
-                    Text(
-                        text = when (signal.strength) {
-                            SignalStrength.VERY_STRONG ->
-                                "Very Strong"
+                                SignalDirection.NEUTRAL ->
+                                    "NO TRADE"
+                            },
 
-                            SignalStrength.STRONG ->
-                                "Strong"
+                        color = accent,
 
-                            SignalStrength.MODERATE ->
-                                "Moderate"
-
-                            SignalStrength.WEAK ->
-                                "Weak"
-                        }
+                        style =
+                            MaterialTheme
+                                .typography
+                                .displaySmall
                     )
 
                     Text(
                         text =
-                            "Entry reference: ${
-                                signal.sourcePrice
-                            }"
+                            "${signal.confidence.toInt()}% CONFIDENCE",
+
+                        color = accent,
+
+                        style =
+                            MaterialTheme
+                                .typography
+                                .titleMedium
+                    )
+
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    Color(0xFF191E2D),
+                                    RoundedCornerShape(
+                                        18.dp
+                                    )
+                                )
+                                .padding(16.dp),
+
+                        horizontalArrangement =
+                            Arrangement.SpaceBetween
+                    ) {
+
+                        Column {
+
+                            Text(
+                                "EXPIRY"
+                            )
+
+                            Text(
+                                "${signal.timeframeSeconds} seconds",
+                                color = accent
+                            )
+                        }
+
+                        Column {
+
+                            Text(
+                                "ENTRY"
+                            )
+
+                            Text(
+                                "%.5f".format(
+                                    signal.sourcePrice
+                                )
+                            )
+                        }
+                    }
+
+                    Text(
+                        text =
+                            when (
+                                signal.strength
+                            ) {
+
+                                SignalStrength.VERY_STRONG ->
+                                    "★★★★★ VERY STRONG"
+
+                                SignalStrength.STRONG ->
+                                    "★★★★ STRONG"
+
+                                SignalStrength.MODERATE ->
+                                    "★★★ MODERATE"
+
+                                SignalStrength.WEAK ->
+                                    "★★ WEAK"
+                            },
+
+                        color = accent
                     )
                 }
             }
