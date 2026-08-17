@@ -11,30 +11,46 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class HistoryViewModel(
-    private val store: SignalHistoryStore
+    private val store:
+        SignalHistoryStore
 ) : ViewModel() {
 
-    val records = store.signals
+    val records =
+        store.signals
 
-    val statistics: StateFlow<PerformanceStats> =
+    val statistics:
+        StateFlow<PerformanceStats> =
         records
-            .map(PerformanceStats::from)
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(
-                    stopTimeoutMillis = 5_000L
-                ),
-                initialValue = PerformanceStats(
-                    total = 0,
-                    wins = 0,
-                    losses = 0,
-                    pending = 0,
-                    cancelled = 0
+            .map {
+                records ->
+                PerformanceStats.from(
+                    records
                 )
+            }
+            .stateIn(
+                scope =
+                    viewModelScope,
+
+                started =
+                    SharingStarted
+                        .WhileSubscribed(
+                            5_000L
+                        ),
+
+                initialValue =
+                    PerformanceStats(
+                        total = 0,
+                        wins = 0,
+                        losses = 0,
+                        pending = 0,
+                        cancelled = 0
+                    )
             )
 
     fun clearHistory() {
+
         viewModelScope.launch {
+
             store.clear()
         }
     }
