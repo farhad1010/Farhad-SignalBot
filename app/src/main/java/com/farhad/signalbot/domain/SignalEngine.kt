@@ -10,41 +10,31 @@ import com.farhad.signalbot.domain.indicator.TrendAnalyzer
 import kotlin.math.abs
 
 class SignalEngine(
-    private val trendAnalyzer:
-        TrendAnalyzer = TrendAnalyzer()
+    private val trendAnalyzer: TrendAnalyzer =
+        TrendAnalyzer()
 ) {
 
     fun analyze(
         candles: List<MarketCandle>
     ): Result<SignalAnalysisResult> {
 
-        if (
-            candles.size <
-            MINIMUM_CANDLES
-        ) {
+        if (candles.size < MINIMUM_CANDLES) {
             return Result.failure(
                 IllegalArgumentException(
-                    "Not enough market data."
+                    "Not enough live market data."
                 )
             )
         }
 
         val data =
             candles
-                .sortedBy {
-                    it.openTime
-                }
-                .takeLast(
-                    MAX_ANALYSIS_CANDLES
-                )
+                .sortedBy { it.openTime }
+                .takeLast(MAX_ANALYSIS_CANDLES)
 
         val closes =
-            data.map {
-                it.close
-            }
+            data.map { it.close }
 
-        val current =
-            data.last()
+        val current = data.last()
 
         val previous =
             data[data.lastIndex - 1]
@@ -90,9 +80,7 @@ class SignalEngine(
             )
 
         val trend =
-            trendAnalyzer.analyze(
-                data
-            )
+            trendAnalyzer.analyze(data)
 
         var bull = 0.0
         var bear = 0.0
@@ -109,26 +97,22 @@ class SignalEngine(
 
             when {
 
-                ema9 >
-                    ema21 &&
-                    ema21 >
-                    ema50 -> {
+                ema9 > ema21 &&
+                    ema21 > ema50 -> {
 
                     bull += 25.0
 
                     reasons +=
-                        "EMA structure bullish."
+                        "EMA structure is bullish."
                 }
 
-                ema9 <
-                    ema21 &&
-                    ema21 <
-                    ema50 -> {
+                ema9 < ema21 &&
+                    ema21 < ema50 -> {
 
                     bear += 25.0
 
                     reasons +=
-                        "EMA structure bearish."
+                        "EMA structure is bearish."
                 }
 
                 ema9 > ema21 -> {
@@ -151,7 +135,7 @@ class SignalEngine(
                     bull += 18.0
 
                     reasons +=
-                        "RSI supports bullish momentum."
+                        "RSI confirms bullish momentum."
                 }
 
                 it in 32.0..48.0 -> {
@@ -159,12 +143,11 @@ class SignalEngine(
                     bear += 18.0
 
                     reasons +=
-                        "RSI supports bearish momentum."
+                        "RSI confirms bearish momentum."
                 }
 
                 it > 72.0 -> {
 
-                    // Do not blindly buy overbought.
                     bear += 8.0
 
                     reasons +=
@@ -194,7 +177,7 @@ class SignalEngine(
                     bull += 18.0
 
                     reasons +=
-                        "MACD bullish."
+                        "MACD is bullish."
                 }
 
                 macd < macdSignal -> {
@@ -202,55 +185,48 @@ class SignalEngine(
                     bear += 18.0
 
                     reasons +=
-                        "MACD bearish."
+                        "MACD is bearish."
                 }
             }
         }
 
-        // Current candle momentum
-        if (
-            current.range > 0.0
-        ) {
+        // Candle momentum
+        if (current.range > 0.0) {
 
             val bodyRatio =
                 current.bodySize /
                     current.range
 
-            if (
-                bodyRatio >=
-                0.55
-            ) {
+            if (bodyRatio >= 0.55) {
 
-                if (
-                    current.isBullish
-                ) {
+                when {
 
-                    bull += 10.0
+                    current.isBullish -> {
 
-                    reasons +=
-                        "Bullish candle momentum."
+                        bull += 10.0
 
-                } else if (
-                    current.isBearish
-                ) {
+                        reasons +=
+                            "Bullish candle momentum."
+                    }
 
-                    bear += 10.0
+                    current.isBearish -> {
 
-                    reasons +=
-                        "Bearish candle momentum."
+                        bear += 10.0
+
+                        reasons +=
+                            "Bearish candle momentum."
+                    }
                 }
             }
         }
 
-        // Immediate price momentum
+        // Immediate momentum
         when {
 
-            current.close >
-                previous.close ->
+            current.close > previous.close ->
                 bull += 5.0
 
-            current.close <
-                previous.close ->
+            current.close < previous.close ->
                 bear += 5.0
         }
 
@@ -262,7 +238,7 @@ class SignalEngine(
                 bull += 20.0
 
                 reasons +=
-                    "Trend strongly bullish."
+                    "Market trend is strongly bullish."
             }
 
             MarketTrend.BULLISH -> {
@@ -270,7 +246,7 @@ class SignalEngine(
                 bull += 10.0
 
                 reasons +=
-                    "Trend bullish."
+                    "Market trend is bullish."
             }
 
             MarketTrend.STRONG_BEARISH -> {
@@ -278,7 +254,7 @@ class SignalEngine(
                 bear += 20.0
 
                 reasons +=
-                    "Trend strongly bearish."
+                    "Market trend is strongly bearish."
             }
 
             MarketTrend.BEARISH -> {
@@ -286,20 +262,18 @@ class SignalEngine(
                 bear += 10.0
 
                 reasons +=
-                    "Trend bearish."
+                    "Market trend is bearish."
             }
 
             MarketTrend.NEUTRAL -> {
 
                 reasons +=
-                    "Trend is neutral."
+                    "Market trend is neutral."
             }
         }
 
         val edge =
-            abs(
-                bull - bear
-            )
+            abs(bull - bear)
 
         val direction =
             when {
@@ -330,14 +304,16 @@ class SignalEngine(
             }
 
         /*
-         * IMPORTANT:
-         * This is model confidence.
-         * It is NOT a guaranteed win probability.
+         * This is MODEL CONFIDENCE.
          *
-         * Calibration will replace this value
-         * with empirically calibrated probability
-         * after sufficient historical outcomes.
+         * It is NOT a guaranteed probability
+         * of winning.
+         *
+         * Historical calibration will later
+         * replace this model score with
+         * empirically observed performance.
          */
+
         val confidence =
             if (
                 direction ==
@@ -348,9 +324,7 @@ class SignalEngine(
 
                 (
                     50.0 +
-                        (
-                            edge * 1.6
-                            )
+                        edge * 1.6
                     )
                     .coerceIn(
                         50.0,
@@ -374,15 +348,6 @@ class SignalEngine(
                     SignalStrength.WEAK
             }
 
-        /*
-         * Maximum allowed:
-         * 60 seconds.
-         *
-         * Only 10 / 30 / 60 are allowed.
-         *
-         * This is selected from volatility and
-         * signal strength, never randomly.
-         */
         val recommendedSeconds =
             chooseWindow(
                 confidence = confidence,
@@ -425,6 +390,7 @@ class SignalEngine(
 
         return Result.success(
             SignalAnalysisResult(
+
                 direction =
                     direction,
 
@@ -455,9 +421,7 @@ class SignalEngine(
         price: Double
     ): Long {
 
-        if (
-            confidence < 60.0
-        ) {
+        if (confidence < 60.0) {
             return 10L
         }
 
@@ -473,21 +437,22 @@ class SignalEngine(
 
         return when {
 
-            volatility >=
-                0.0012 &&
-                confidence >= 70.0 ->
+            volatility >= 0.0015 &&
+                confidence >= 75.0 ->
                 10L
 
-            volatility >=
-                0.0006 ->
+            volatility >= 0.0010 &&
+                confidence >= 70.0 ->
+                20L
+
+            volatility >= 0.0006 ->
                 30L
 
-            confidence >=
-                75.0 ->
-                60L
+            confidence >= 80.0 ->
+                45L
 
             else ->
-                30L
+                60L
         }
     }
 
