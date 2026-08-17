@@ -24,7 +24,8 @@ import java.time.Instant
 
 class SignalDashboardViewModel(
     private val container: AppContainer,
-    private val historyRepository: SignalHistoryRepository
+    private val historyRepository:
+        SignalHistoryRepository
 ) : ViewModel() {
 
     private val _state =
@@ -32,23 +33,21 @@ class SignalDashboardViewModel(
             SignalDashboardState()
         )
 
-    val state: StateFlow<SignalDashboardState> =
+    val state:
+        StateFlow<SignalDashboardState> =
         _state.asStateFlow()
 
-    private val signalFactory =
+    private val factory =
         SignalFactory()
 
-    private val signalEvaluator =
+    private val evaluator =
         SignalEvaluator()
 
-    private var refreshJob: Job? = null
+    private var refreshJob:
+        Job? = null
 
-    /*
-     * We create at most one signal for the same
-     * market candle. This prevents the 15-second
-     * refresh loop from creating duplicate signals.
-     */
-    private var lastSignalCandleTime: Instant? = null
+    private var lastSignalCandle:
+        Instant? = null
 
     init {
         startLiveUpdates()
@@ -57,23 +56,35 @@ class SignalDashboardViewModel(
     fun selectSymbol(
         symbol: TradingSymbol
     ) {
-        if (_state.value.selectedSymbol == symbol) {
+
+        if (
+            symbol ==
+            _state.value.selectedSymbol
+        ) {
             return
         }
 
         refreshJob?.cancel()
 
-        lastSignalCandleTime = null
+        lastSignalCandle = null
 
         _state.value =
             SignalDashboardState(
-                selectedSymbol = symbol
+                selectedSymbol =
+                    symbol
             )
 
         startLiveUpdates()
     }
 
     fun refreshNow() {
+
+        if (
+            _state.value.isRefreshing
+        ) {
+            return
+        }
+
         viewModelScope.launch {
             loadMarketData()
         }
@@ -86,12 +97,14 @@ class SignalDashboardViewModel(
         refreshJob =
             viewModelScope.launch {
 
-                while (isActive) {
+                while (
+                    isActive
+                ) {
 
                     loadMarketData()
 
                     delay(
-                        REFRESH_INTERVAL_MILLIS
+                        REFRESH_INTERVAL
                     )
                 }
             }
@@ -99,147 +112,202 @@ class SignalDashboardViewModel(
 
     private suspend fun loadMarketData() {
 
-        val currentState =
+        val old =
             _state.value
 
         _state.value =
-            currentState.copy(
+            old.copy(
                 isRefreshing = true,
                 errorMessage = null,
+
                 signalState =
-                    if (currentState.candles.isEmpty()) {
+                    if (
+                        old.candles.isEmpty()
+                    ) {
                         SignalState.Loading
                     } else {
-                        currentState.signalState
+                        old.signalState
                     }
             )
 
         val result =
-            container.marketDataRepository.getCandles(
-                symbol =
-                    currentState.selectedSymbol,
-                limit = CANDLE_LIMIT
-            )
+            container
+                .marketDataRepository
+                .getCandles(
+                    symbol =
+                        old.selectedSymbol,
 
-        result
-            .onSuccess { candles ->
-                processMarketData(candles)
-            }
-            .onFailure { error ->
+                    limit =
+                        CANDLE_LIMIT
+                )
+
+        result.fold(
+
+            onSuccess = {
+                candles ->
+                processMarketData(
+                    candles
+                )
+            },
+
+            onFailure = {
+                error ->
 
                 _state.value =
                     _state.value.copy(
-                        isRefreshing = false,
+                        isRefreshing =
+                            false,
+
                         errorMessage =
                             error.message
-                                ?: "Unable to load market data."
+                                ?: "Live market data unavailable.",
+
+                        signalState =
+                            if (
+                                _state.value.candles
+                                    .isEmpty()
+                            ) {
+                                SignalState.Error(
+                                    "Market data unavailable."
+                                )
+                            } else {
+                                _state.value.signalState
+                            }
                     )
             }
+        )
     }
 
     private suspend fun processMarketData(
         candles: List<MarketCandle>
     ) {
 
-        if (candles.size < MINIMUM_CANDLES) {
+        if (
+            candles.size <
+            MINIMUM_CANDLES
+        ) {
 
             _state.value =
                 _state.value.copy(
-                    candles = candles,
-                    isRefreshing = false,
+                    candles =
+                        candles,
+
+                    isRefreshing =
+                        false,
+
                     errorMessage =
-                        "Insufficient market data. " +
-                            "At least $MINIMUM_CANDLES " +
-                            "candles are required."
+                        "Insufficient live market data."
                 )
 
             return
         }
 
-        val previousPrice =
+        val oldPrice =
             _state.value.currentPrice
 
         val currentPrice =
             candles.last().close
 
-        val changePercent =
-            previousPrice
-                ?.takeIf { it > 0.0 }
-                ?.let { previous ->
+        val change =
+            oldPrice
+                ?.takeIf {
+                    it > 0.0
+                }
+                ?.let {
                     (
-                        (currentPrice - previous) /
-                            previous
+                        (
+                            currentPrice -
+                                it
+                            ) /
+                            it
                         ) * 100.0
                 }
 
         val analysis =
-            container.signalEngine
-                .analyze(candles)
+            container
+                .signalEngine
+                .analyze(
+                    candles
+                )
 
         val signalState =
             analysis.fold(
-                onSuccess = { analysisResult ->
 
-                    signalFactory.create(
+                onSuccess = {
+                    result ->
+
+                    factory.create(
                         symbol =
-                            _state.value.selectedSymbol,
+                            _state.value
+                                .selectedSymbol,
+
                         analysis =
-                            analysisResult,
-                        timeframeSeconds =
-                            SIGNAL_TIMEFRAME_SECONDS
+                            result
                     )
                 },
 
-                onFailure = { error ->
+                onFailure = {
+                    error ->
 
                     SignalState.Error(
                         error.message
-                            ?: "Market analysis failed."
+                            ?: "Analysis unavailable."
                     )
                 }
             )
 
         _state.value =
             _state.value.copy(
-                candles = candles,
-                previousPrice = previousPrice,
-                currentPrice = currentPrice,
+                candles =
+                    candles,
+
+                previousPrice =
+                    oldPrice,
+
+                currentPrice =
+                    currentPrice,
+
                 priceChangePercent =
-                    changePercent,
-                signalState = signalState,
-                isRefreshing = false,
+                    change,
+
+                signalState =
+                    signalState,
+
+                isRefreshing =
+                    false,
+
                 lastUpdatedMillis =
                     System.currentTimeMillis(),
-                errorMessage = null
+
+                errorMessage =
+                    null
             )
 
-        /*
-         * First evaluate older pending signals.
-         */
-        evaluatePendingSignals(candles)
+        evaluatePending(
+            candles
+        )
 
-        /*
-         * Then save the new signal only once
-         * for the current market candle.
-         */
-        saveNewSignalIfNeeded(
-            signalState = signalState,
-            latestCandle = candles.last()
+        saveSignal(
+            signalState,
+            candles.last()
         )
     }
 
-    private suspend fun saveNewSignalIfNeeded(
+    private suspend fun saveSignal(
         signalState: SignalState,
-        latestCandle: MarketCandle
+        candle: MarketCandle
     ) {
 
-        if (signalState !is SignalState.Ready) {
+        if (
+            signalState !is
+            SignalState.Ready
+        ) {
             return
         }
 
         if (
-            lastSignalCandleTime ==
-            latestCandle.openTime
+            lastSignalCandle ==
+            candle.openTime
         ) {
             return
         }
@@ -247,45 +315,44 @@ class SignalDashboardViewModel(
         val signal =
             signalState.signal
 
-        /*
-         * A signal generated from a candle is tied
-         * to that candle. The same candle must not
-         * produce duplicate history records.
-         */
-        val existingRecords =
-            historyRepository.history.first()
+        val records =
+            historyRepository
+                .history
+                .first()
 
-        val alreadyExists =
-            existingRecords.any {
+        val duplicate =
+            records.any {
                 it.signal.symbol.id ==
                     signal.symbol.id &&
-                    it.signal.generatedAt
-                        .isAfter(
-                            latestCandle.openTime
-                        )
+                    it.signal.generatedAt ==
+                    signal.generatedAt
             }
 
-        if (!alreadyExists) {
+        if (!duplicate) {
 
             historyRepository.save(
                 SignalRecord(
-                    signal = signal,
+                    signal =
+                        signal,
+
                     outcome =
                         SignalOutcome.PENDING
                 )
             )
         }
 
-        lastSignalCandleTime =
-            latestCandle.openTime
+        lastSignalCandle =
+            candle.openTime
     }
 
-    private suspend fun evaluatePendingSignals(
+    private suspend fun evaluatePending(
         candles: List<MarketCandle>
     ) {
 
         val records =
-            historyRepository.history.first()
+            historyRepository
+                .history
+                .first()
 
         val now =
             Instant.now()
@@ -295,13 +362,19 @@ class SignalDashboardViewModel(
                 it.outcome ==
                     SignalOutcome.PENDING
             }
-            .forEach { record ->
+            .forEach {
+                record ->
 
                 val evaluated =
-                    signalEvaluator.evaluate(
-                        record = record,
-                        candles = candles,
-                        now = now
+                    evaluator.evaluate(
+                        record =
+                            record,
+
+                        candles =
+                            candles,
+
+                        now =
+                            now
                     )
 
                 if (
@@ -309,9 +382,10 @@ class SignalDashboardViewModel(
                         SignalOutcome.PENDING
                 ) {
 
-                    historyRepository.update(
-                        evaluated
-                    )
+                    historyRepository
+                        .update(
+                            evaluated
+                        )
                 }
             }
     }
@@ -325,12 +399,11 @@ class SignalDashboardViewModel(
 
     private companion object {
 
-        const val CANDLE_LIMIT = 200
+        const val CANDLE_LIMIT = 500
 
-        const val MINIMUM_CANDLES = 50
+        const val MINIMUM_CANDLES = 80
 
-        const val SIGNAL_TIMEFRAME_SECONDS = 60L
-
-        const val REFRESH_INTERVAL_MILLIS = 15_000L
+        const val REFRESH_INTERVAL =
+            10_000L
     }
 }
