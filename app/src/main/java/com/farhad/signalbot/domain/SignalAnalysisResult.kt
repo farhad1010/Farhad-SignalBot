@@ -9,6 +9,7 @@ data class SignalAnalysisResult(
     val direction: SignalDirection,
     val strength: SignalStrength,
     val confidence: Double,
+    val recommendedSeconds: Long,
     val snapshot: TechnicalSnapshot,
     val trend: MarketTrend,
     val reasons: List<String>
