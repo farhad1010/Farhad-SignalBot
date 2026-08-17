@@ -11,25 +11,29 @@ class AppContainer(
     context: Context
 ) {
 
-    private val appContext = context.applicationContext
+    private val appContext =
+        context.applicationContext
 
     val apiKeyProvider: ApiKeyProvider =
         BuildConfigApiKeyProvider()
 
-    val marketDataRepository: MarketDataRepository by lazy {
+    val marketDataRepository:
+        MarketDataRepository by lazy {
 
-        val apiKey = apiKeyProvider.getMarketApiKey()
-
-        require(apiKey.isNotBlank()) {
-            "MARKET_API_KEY is not configured."
-        }
+        val apiKey =
+            apiKeyProvider
+                .getMarketApiKey()
 
         MarketDataRepository(
-            apiClient = RetrofitProvider.create(apiKey)
+            apiClient =
+                RetrofitProvider.create(
+                    apiKey = apiKey
+                )
         )
     }
 
-    val signalEngine: SignalEngine by lazy {
+    val signalEngine:
+        SignalEngine by lazy {
         SignalEngine()
     }
 }
