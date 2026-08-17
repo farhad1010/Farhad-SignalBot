@@ -16,42 +16,47 @@ class MarketApiClient(
 
         return try {
 
-            val safeLimit = limit.coerceIn(50, 500)
+            val safeLimit =
+                limit.coerceIn(50, 500)
 
-            val today = LocalDate.now(ZoneOffset.UTC)
-            val from = today.minusDays(5)
-            val to = today
+            val today =
+                LocalDate.now(ZoneOffset.UTC)
 
-            val response = service.getMinuteBars(
-                ticker = symbol,
-                from = from.toString(),
-                to = to.toString(),
-                adjusted = true,
-                sort = "asc",
-                limit = safeLimit
-            )
+            val from =
+                today.minusDays(5)
+
+            val to =
+                today
+
+            val response =
+                service.getMinuteBars(
+                    ticker = symbol,
+                    from = from.toString(),
+                    to = to.toString(),
+                    adjusted = true,
+                    sort = "asc",
+                    limit = safeLimit
+                )
 
             when {
-                response.error != null -> {
+
+                response.error != null ->
                     Result.failure(
                         MarketApiException.InvalidResponse(
                             response.error
                         )
                     )
-                }
 
-                response.results.isEmpty() -> {
+                response.results.isEmpty() ->
                     Result.failure(
                         MarketApiException.InvalidResponse(
                             response.message
                                 ?: "No market candles were returned."
                         )
                     )
-                }
 
-                else -> {
+                else ->
                     Result.success(response)
-                }
             }
 
         } catch (e: HttpException) {
