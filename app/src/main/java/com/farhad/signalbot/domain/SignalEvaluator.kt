@@ -14,39 +14,78 @@ class SignalEvaluator {
         now: Instant = Instant.now()
     ): SignalRecord {
 
-        if (record.outcome != SignalOutcome.PENDING) {
+        if (
+            record.outcome !=
+            SignalOutcome.PENDING
+        ) {
             return record
         }
 
-        val signal = record.signal
+        val signal =
+            record.signal
 
-        val expiryCandle =
-            candles.lastOrNull {
-                !it.closeTime.isBefore(signal.expiresAt)
-            }
+        val expiry =
+            signal.expiresAt
 
-        if (expiryCandle == null) {
+        /*
+         * We need market data that actually
+         * reaches the requested expiry.
+         */
+        val future =
+            candles
+                .sortedBy {
+                    it.closeTime
+                }
+                .firstOrNull {
+                    !it.closeTime
+                        .isBefore(
+                            expiry
+                        )
+                }
+
+        if (
+            future == null
+        ) {
             return record
         }
 
-        val entry = signal.sourcePrice
-        val result = expiryCandle.close
+        val entry =
+            signal.sourcePrice
+
+        val exit =
+            future.close
 
         val outcome =
-            when (signal.direction) {
+            when (
+                signal.direction
+            ) {
 
                 SignalDirection.CALL ->
-                    if (result > entry) {
-                        SignalOutcome.WIN
-                    } else {
-                        SignalOutcome.LOSS
+
+                    when {
+
+                        exit > entry ->
+                            SignalOutcome.WIN
+
+                        exit < entry ->
+                            SignalOutcome.LOSS
+
+                        else ->
+                            SignalOutcome.CANCELLED
                     }
 
                 SignalDirection.PUT ->
-                    if (result < entry) {
-                        SignalOutcome.WIN
-                    } else {
-                        SignalOutcome.LOSS
+
+                    when {
+
+                        exit < entry ->
+                            SignalOutcome.WIN
+
+                        exit > entry ->
+                            SignalOutcome.LOSS
+
+                        else ->
+                            SignalOutcome.CANCELLED
                     }
 
                 SignalDirection.NEUTRAL ->
@@ -54,9 +93,14 @@ class SignalEvaluator {
             }
 
         return record.copy(
-            outcome = outcome,
-            evaluatedAt = now,
-            resultPrice = result
+            outcome =
+                outcome,
+
+            evaluatedAt =
+                now,
+
+            resultPrice =
+                exit
         )
     }
 }
