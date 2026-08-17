@@ -20,6 +20,7 @@ class SignalFactory {
             analysis.direction ==
             SignalDirection.NEUTRAL
         ) {
+
             return SignalState.NoSignal(
                 analysis =
                     analysis.snapshot
@@ -27,11 +28,17 @@ class SignalFactory {
         }
 
         val seconds =
-            analysis.recommendedSeconds
-                .coerceIn(
-                    30L,
-                    180L
-                )
+            when (
+                analysis.recommendedSeconds
+            ) {
+
+                10L -> 10L
+                30L -> 30L
+                60L -> 60L
+
+                else ->
+                    30L
+            }
 
         val signal =
             TradingSignal(
@@ -73,7 +80,9 @@ class SignalFactory {
             )
 
         return SignalState.Ready(
-            signal = signal,
+            signal =
+                signal,
+
             analysis =
                 analysis.snapshot
         )
