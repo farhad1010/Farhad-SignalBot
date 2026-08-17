@@ -33,15 +33,21 @@ class SignalFactory {
             ) {
 
                 10L -> 10L
+
+                20L -> 20L
+
                 30L -> 30L
+
+                45L -> 45L
+
                 60L -> 60L
 
-                else ->
-                    30L
+                else -> 30L
             }
 
         val signal =
             TradingSignal(
+
                 id =
                     UUID.randomUUID()
                         .toString(),
@@ -80,8 +86,7 @@ class SignalFactory {
             )
 
         return SignalState.Ready(
-            signal =
-                signal,
+            signal = signal,
 
             analysis =
                 analysis.snapshot
