@@ -8,15 +8,11 @@ import java.util.concurrent.TimeUnit
 object RetrofitProvider {
 
     private const val BASE_URL =
-        "https://api.polygon.io/"
+        "https://api.massive.com/"
 
     fun create(
         apiKey: String
     ): MarketApiClient {
-
-        require(apiKey.isNotBlank()) {
-            "Market-data API key is not configured."
-        }
 
         val client =
             OkHttpClient.Builder()
@@ -38,18 +34,20 @@ object RetrofitProvider {
                     val request =
                         chain.request()
 
-                    val url =
+                    val builder =
                         request.url
                             .newBuilder()
-                            .addQueryParameter(
-                                "apiKey",
-                                apiKey
-                            )
-                            .build()
+
+                    if (apiKey.isNotBlank()) {
+                        builder.addQueryParameter(
+                            "apiKey",
+                            apiKey
+                        )
+                    }
 
                     chain.proceed(
                         request.newBuilder()
-                            .url(url)
+                            .url(builder.build())
                             .build()
                     )
                 }
