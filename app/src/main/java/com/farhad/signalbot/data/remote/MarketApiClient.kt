@@ -17,10 +17,12 @@ class MarketApiClient(
         return try {
 
             val today =
-                LocalDate.now(ZoneOffset.UTC)
+                LocalDate.now(
+                    ZoneOffset.UTC
+                )
 
             val from =
-                today.minusDays(3)
+                today.minusDays(7)
 
             val response =
                 service.getMinuteBars(
@@ -39,12 +41,6 @@ class MarketApiClient(
                 )
 
             when {
-                response.error != null ->
-                    Result.failure(
-                        MarketApiException.InvalidResponse(
-                            response.error
-                        )
-                    )
 
                 response.results.isEmpty() ->
                     Result.failure(
@@ -54,14 +50,26 @@ class MarketApiClient(
                         )
                     )
 
+                response.error != null ->
+                    Result.failure(
+                        MarketApiException.InvalidResponse(
+                            response.error
+                        )
+                    )
+
                 else ->
-                    Result.success(response)
+                    Result.success(
+                        response
+                    )
             }
 
-        } catch (e: HttpException) {
+        } catch (
+            e: HttpException
+        ) {
 
             Result.failure(
                 when (e.code()) {
+
                     401, 403 ->
                         MarketApiException.Unauthorized()
 
@@ -70,7 +78,7 @@ class MarketApiClient(
 
                     in 500..599 ->
                         MarketApiException.Server(
-                            "Market server error: ${e.code()}"
+                            "Market data server error."
                         )
 
                     else ->
@@ -80,14 +88,17 @@ class MarketApiClient(
                 }
             )
 
-        } catch (e: IOException) {
+        } catch (
+            e: IOException
+        ) {
 
             Result.failure(
                 MarketApiException.Network(e)
-
             )
 
-        } catch (e: Exception) {
+        } catch (
+            e: Exception
+        ) {
 
             Result.failure(
                 MarketApiException.Unknown(e)
