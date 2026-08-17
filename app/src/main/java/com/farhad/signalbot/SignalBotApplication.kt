@@ -19,7 +19,8 @@ class SignalBotApplication : Application() {
 
         appContainer = AppContainer(this)
 
-        val database = DatabaseProvider.get(this)
+        val database =
+            DatabaseProvider.get(this)
 
         val historyStore =
             RoomSignalHistoryStore(
