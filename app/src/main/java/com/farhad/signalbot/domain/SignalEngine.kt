@@ -7,16 +7,22 @@ import com.farhad.signalbot.core.model.TechnicalSnapshot
 import com.farhad.signalbot.domain.indicator.MarketTrend
 import com.farhad.signalbot.domain.indicator.TechnicalIndicators
 import com.farhad.signalbot.domain.indicator.TrendAnalyzer
+import kotlin.math.abs
 
 class SignalEngine(
-    private val trendAnalyzer: TrendAnalyzer = TrendAnalyzer()
+    private val trendAnalyzer:
+        TrendAnalyzer =
+        TrendAnalyzer()
 ) {
 
     fun analyze(
         candles: List<MarketCandle>
     ): Result<SignalAnalysisResult> {
 
-        if (candles.size < MINIMUM_CANDLES) {
+        if (
+            candles.size <
+            MINIMUM_CANDLES
+        ) {
             return Result.failure(
                 IllegalArgumentException(
                     "At least $MINIMUM_CANDLES candles are required."
@@ -24,187 +30,475 @@ class SignalEngine(
             )
         }
 
-        val closes = candles.map { it.close }
-        val currentPrice = closes.last()
+        val ordered =
+            candles.sortedBy {
+                it.openTime
+            }
 
-        val emaFast =
-            TechnicalIndicators.ema(closes, FAST_EMA)
+        val closes =
+            ordered.map {
+                it.close
+            }
 
-        val emaSlow =
-            TechnicalIndicators.ema(closes, SLOW_EMA)
+        val current =
+            ordered.last()
+
+        val previous =
+            ordered[ordered.lastIndex - 1]
+
+        val ema9 =
+            TechnicalIndicators.ema(
+                closes,
+                9
+            )
+
+        val ema21 =
+            TechnicalIndicators.ema(
+                closes,
+                21
+            )
+
+        val ema50 =
+            TechnicalIndicators.ema(
+                closes,
+                50
+            )
 
         val rsi =
-            TechnicalIndicators.rsi(closes, RSI_PERIOD)
+            TechnicalIndicators.rsi(
+                closes,
+                14
+            )
 
         val macd =
             TechnicalIndicators.macd(
-                closes,
-                FAST_EMA,
-                SLOW_EMA
+                closes
             )
 
         val macdSignal =
             TechnicalIndicators.macdSignal(
-                closes,
-                FAST_EMA,
-                SLOW_EMA,
-                MACD_SIGNAL
+                closes
             )
 
-        val trend = trendAnalyzer.analyze(candles)
+        val atr =
+            TechnicalIndicators.atr(
+                ordered,
+                14
+            )
 
-        var bullishScore = 0.0
-        var bearishScore = 0.0
+        val trend =
+            trendAnalyzer.analyze(
+                ordered
+            )
 
-        val reasons = mutableListOf<String>()
+        var bullish = 0.0
+        var bearish = 0.0
 
-        if (emaFast != null && emaSlow != null) {
-            if (emaFast > emaSlow) {
-                bullishScore += 25
-                reasons += "Fast EMA is above slow EMA."
-            } else if (emaFast < emaSlow) {
-                bearishScore += 25
-                reasons += "Fast EMA is below slow EMA."
+        val reasons =
+            mutableListOf<String>()
+
+        /*
+         * EMA alignment
+         */
+        if (
+            ema9 != null &&
+            ema21 != null &&
+            ema50 != null
+        ) {
+
+            if (
+                ema9 >
+                ema21 &&
+                ema21 >
+                ema50
+            ) {
+
+                bullish += 25.0
+
+                reasons +=
+                    "EMA 9/21/50 bullish alignment."
+
+            } else if (
+                ema9 <
+                ema21 &&
+                ema21 <
+                ema50
+            ) {
+
+                bearish += 25.0
+
+                reasons +=
+                    "EMA 9/21/50 bearish alignment."
+
+            } else {
+
+                bullish +=
+                    if (ema9 > ema21)
+                        8.0
+                    else 0.0
+
+                bearish +=
+                    if (ema9 < ema21)
+                        8.0
+                    else 0.0
             }
         }
 
+        /*
+         * RSI momentum
+         */
         if (rsi != null) {
+
             when {
-                rsi >= 55.0 && rsi < 70.0 -> {
-                    bullishScore += 20
-                    reasons += "RSI supports bullish momentum."
+
+                rsi in 52.0..68.0 -> {
+
+                    bullish += 18.0
+
+                    reasons +=
+                        "RSI confirms bullish momentum."
                 }
 
-                rsi <= 45.0 && rsi > 30.0 -> {
-                    bearishScore += 20
-                    reasons += "RSI supports bearish momentum."
+                rsi in 32.0..48.0 -> {
+
+                    bearish += 18.0
+
+                    reasons +=
+                        "RSI confirms bearish momentum."
                 }
 
-                rsi >= 70.0 -> {
-                    bearishScore += 10
-                    reasons += "RSI indicates an overbought condition."
+                rsi > 72.0 -> {
+
+                    bullish += 4.0
+
+                    bearish += 8.0
+
+                    reasons +=
+                        "RSI is strongly overbought."
                 }
 
-                rsi <= 30.0 -> {
-                    bullishScore += 10
-                    reasons += "RSI indicates an oversold condition."
+                rsi < 28.0 -> {
+
+                    bullish += 8.0
+
+                    bearish += 4.0
+
+                    reasons +=
+                        "RSI is strongly oversold."
                 }
             }
         }
 
-        if (macd != null && macdSignal != null) {
+        /*
+         * MACD
+         */
+        if (
+            macd != null &&
+            macdSignal != null
+        ) {
+
             when {
-                macd > macdSignal -> {
-                    bullishScore += 25
-                    reasons += "MACD is above its signal line."
+
+                macd >
+                    macdSignal -> {
+
+                    bullish += 18.0
+
+                    reasons +=
+                        "MACD is above signal."
                 }
 
-                macd < macdSignal -> {
-                    bearishScore += 25
-                    reasons += "MACD is below its signal line."
+                macd <
+                    macdSignal -> {
+
+                    bearish += 18.0
+
+                    reasons +=
+                        "MACD is below signal."
                 }
             }
         }
 
+        /*
+         * Candle momentum
+         */
+        val body =
+            current.bodySize
+
+        val range =
+            current.range
+
+        if (
+            range > 0.0 &&
+            body / range >= 0.55
+        ) {
+
+            if (current.isBullish) {
+
+                bullish += 10.0
+
+                reasons +=
+                    "Strong bullish candle body."
+
+            } else if (
+                current.isBearish
+            ) {
+
+                bearish += 10.0
+
+                reasons +=
+                    "Strong bearish candle body."
+            }
+        }
+
+        /*
+         * Immediate momentum
+         */
+        if (
+            current.close >
+            previous.close
+        ) {
+
+            bullish += 5.0
+
+        } else if (
+            current.close <
+            previous.close
+        ) {
+
+            bearish += 5.0
+        }
+
+        /*
+         * Trend confirmation
+         */
         when (trend) {
+
             MarketTrend.STRONG_BULLISH -> {
-                bullishScore += 30
-                reasons += "Overall market trend is strongly bullish."
+
+                bullish += 20.0
+
+                reasons +=
+                    "Higher trend structure is bullish."
             }
 
             MarketTrend.BULLISH -> {
-                bullishScore += 15
-                reasons += "Overall market trend is bullish."
+
+                bullish += 10.0
+
+                reasons +=
+                    "Market trend is bullish."
             }
 
             MarketTrend.STRONG_BEARISH -> {
-                bearishScore += 30
-                reasons += "Overall market trend is strongly bearish."
+
+                bearish += 20.0
+
+                reasons +=
+                    "Higher trend structure is bearish."
             }
 
             MarketTrend.BEARISH -> {
-                bearishScore += 15
-                reasons += "Overall market trend is bearish."
+
+                bearish += 10.0
+
+                reasons +=
+                    "Market trend is bearish."
             }
 
             MarketTrend.NEUTRAL -> {
-                reasons += "Market trend is currently neutral."
+
+                reasons +=
+                    "Trend confirmation is neutral."
             }
         }
 
+        /*
+         * Avoid trading when the two sides
+         * are too close.
+         */
+        val difference =
+            abs(
+                bullish -
+                    bearish
+            )
+
         val direction =
             when {
-                bullishScore > bearishScore &&
-                    bullishScore >= MINIMUM_SIGNAL_SCORE ->
+
+                bullish >=
+                    MINIMUM_DIRECTION_SCORE &&
+                    difference >=
+                    MINIMUM_EDGE ->
                     SignalDirection.CALL
 
-                bearishScore > bullishScore &&
-                    bearishScore >= MINIMUM_SIGNAL_SCORE ->
+                bearish >=
+                    MINIMUM_DIRECTION_SCORE &&
+                    difference >=
+                    MINIMUM_EDGE ->
                     SignalDirection.PUT
 
                 else ->
                     SignalDirection.NEUTRAL
             }
 
-        val confidence =
+        val winningScore =
             when (direction) {
+
                 SignalDirection.CALL ->
-                    bullishScore.coerceIn(0.0, 100.0)
+                    bullish
 
                 SignalDirection.PUT ->
-                    bearishScore.coerceIn(0.0, 100.0)
+                    bearish
 
                 SignalDirection.NEUTRAL ->
                     0.0
             }
 
+        /*
+         * This is a model strength score,
+         * NOT a guaranteed probability of winning.
+         */
+        val confidence =
+            if (
+                direction ==
+                    SignalDirection.NEUTRAL
+            ) {
+                0.0
+            } else {
+
+                val base =
+                    winningScore
+                        .coerceIn(
+                            0.0,
+                            100.0
+                        )
+
+                /*
+                 * Require a meaningful edge.
+                 * Do not display fake 90–99%
+                 * values just because indicators
+                 * happen to agree.
+                 */
+                base
+                    .coerceIn(
+                        55.0,
+                        88.0
+                    )
+            }
+
         val strength =
             when {
-                confidence >= 85.0 ->
+
+                confidence >= 80.0 ->
                     SignalStrength.VERY_STRONG
 
                 confidence >= 70.0 ->
                     SignalStrength.STRONG
 
-                confidence >= 55.0 ->
+                confidence >= 60.0 ->
                     SignalStrength.MODERATE
 
                 else ->
                     SignalStrength.WEAK
             }
 
-        val snapshot = TechnicalSnapshot(
-            currentPrice = currentPrice,
-            emaFast = emaFast,
-            emaSlow = emaSlow,
-            rsi = rsi,
-            macd = macd,
-            macdSignal = macdSignal,
-            bullishScore = bullishScore.coerceIn(0.0, 100.0),
-            bearishScore = bearishScore.coerceIn(0.0, 100.0)
-        )
+        /*
+         * Adaptive analysis window.
+         *
+         * This is a strategy-derived holding
+         * window, NOT a promise that price will
+         * move in that direction for that many
+         * seconds.
+         */
+        val recommendedSeconds =
+            when {
+
+                atr == null ->
+                    60L
+
+                range <= 0.0 ->
+                    60L
+
+                atr / current.close >=
+                    0.0015 ->
+                    60L
+
+                atr / current.close >=
+                    0.0008 ->
+                    90L
+
+                else ->
+                    120L
+            }
+
+        val snapshot =
+            TechnicalSnapshot(
+                currentPrice =
+                    current.close,
+
+                emaFast =
+                    ema9,
+
+                emaSlow =
+                    ema21,
+
+                rsi =
+                    rsi,
+
+                macd =
+                    macd,
+
+                macdSignal =
+                    macdSignal,
+
+                bullishScore =
+                    bullish.coerceIn(
+                        0.0,
+                        100.0
+                    ),
+
+                bearishScore =
+                    bearish.coerceIn(
+                        0.0,
+                        100.0
+                    )
+            )
 
         return Result.success(
             SignalAnalysisResult(
-                direction = direction,
-                strength = strength,
-                confidence = confidence,
-                snapshot = snapshot,
-                trend = trend,
-                reasons = reasons.distinct()
+                direction =
+                    direction,
+
+                strength =
+                    strength,
+
+                confidence =
+                    confidence,
+
+                recommendedSeconds =
+                    recommendedSeconds,
+
+                snapshot =
+                    snapshot,
+
+                trend =
+                    trend,
+
+                reasons =
+                    reasons.distinct()
             )
         )
     }
 
     private companion object {
-        const val MINIMUM_CANDLES = 50
 
-        const val FAST_EMA = 12
-        const val SLOW_EMA = 26
+        const val MINIMUM_CANDLES = 80
 
-        const val RSI_PERIOD = 14
-        const val MACD_SIGNAL = 9
+        const val MINIMUM_DIRECTION_SCORE =
+            58.0
 
-        const val MINIMUM_SIGNAL_SCORE = 55.0
+        const val MINIMUM_EDGE =
+            12.0
     }
 }
