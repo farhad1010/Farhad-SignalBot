@@ -2,13 +2,13 @@ package com.farhad.signalbot.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.farhad.signalbot.core.model.SignalOutcome
 import com.farhad.signalbot.data.SignalHistoryStore
 import com.farhad.signalbot.domain.PerformanceStats
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class HistoryViewModel(
     private val store: SignalHistoryStore
@@ -21,7 +21,9 @@ class HistoryViewModel(
             .map(PerformanceStats::from)
             .stateIn(
                 scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000),
+                started = SharingStarted.WhileSubscribed(
+                    stopTimeoutMillis = 5_000L
+                ),
                 initialValue = PerformanceStats(
                     total = 0,
                     wins = 0,
@@ -32,16 +34,8 @@ class HistoryViewModel(
             )
 
     fun clearHistory() {
-        viewModelScope.launchSafe {
+        viewModelScope.launch {
             store.clear()
-        }
-    }
-
-    private fun kotlinx.coroutines.CoroutineScope.launchSafe(
-        block: suspend () -> Unit
-    ) {
-        kotlinx.coroutines.launch {
-            block()
         }
     }
 }
