@@ -35,16 +35,16 @@ fun MarketChart(
         mutableFloatStateOf(1f)
     }
 
-    val bullishColor =
+    val bullish =
         MaterialTheme.colorScheme.primary
 
-    val bearishColor =
+    val bearish =
         MaterialTheme.colorScheme.error
 
-    val emaFastColor =
+    val fast =
         MaterialTheme.colorScheme.tertiary
 
-    val emaSlowColor =
+    val slow =
         MaterialTheme.colorScheme.secondary
 
     Card(
@@ -54,7 +54,8 @@ fun MarketChart(
         colors =
             CardDefaults.cardColors(
                 containerColor =
-                    MaterialTheme.colorScheme
+                    MaterialTheme
+                        .colorScheme
                         .surface
             )
     ) {
@@ -70,13 +71,13 @@ fun MarketChart(
                         detectTransformGestures {
                                 _,
                                 _,
-                                gestureZoom,
+                                scale,
                                 _ ->
 
                             zoom =
                                 (
                                     zoom *
-                                        gestureZoom
+                                        scale
                                     )
                                     .coerceIn(
                                         1f,
@@ -89,52 +90,57 @@ fun MarketChart(
             val points =
                 data.points
 
-            if (points.size < 2) {
+            if (
+                points.size < 2
+            ) {
                 return@Canvas
             }
 
-            val visibleCount =
-                max(
-                    20,
-                    (
-                        points.size / zoom
-                        ).toInt()
-                )
-                    .coerceAtMost(
+            val count =
+                (
+                    points.size /
+                        zoom
+                    )
+                    .toInt()
+                    .coerceIn(
+                        2,
                         points.size
                     )
 
             val visible =
                 points.takeLast(
-                    visibleCount
+                    count
                 )
 
-            val priceRange =
-                max(
+            val range =
+                (
                     data.maxPrice -
-                        data.minPrice,
-                    0.0000001
-                )
+                        data.minPrice
+                    )
+                    .coerceAtLeast(
+                        0.0000001
+                    )
 
-            val candleWidth =
+            val width =
                 size.width /
                     visible.size
                         .toFloat()
 
-            fun y(
-                price: Double
+            fun mapY(
+                value: Double
             ): Float {
 
                 return (
                     size.height -
                         (
                             (
-                                price -
+                                value -
                                     data.minPrice
                                 ) /
-                                priceRange *
+                                range *
                                 size.height
-                            ).toFloat()
+                            )
+                            .toFloat()
                     )
             }
 
@@ -142,125 +148,145 @@ fun MarketChart(
                     index,
                     point ->
 
-                val centerX =
+                val x =
                     index *
-                        candleWidth +
-                        candleWidth / 2f
+                        width +
+                        width / 2f
 
-                val highY =
-                    y(point.high)
+                val high =
+                    mapY(
+                        point.high
+                    )
 
-                val lowY =
-                    y(point.low)
+                val low =
+                    mapY(
+                        point.low
+                    )
 
-                val openY =
-                    y(point.open)
+                val open =
+                    mapY(
+                        point.open
+                    )
 
-                val closeY =
-                    y(point.close)
+                val close =
+                    mapY(
+                        point.close
+                    )
 
                 val candleColor =
                     if (
                         point.close >=
                             point.open
                     ) {
-                        bullishColor
+                        bullish
                     } else {
-                        bearishColor
+                        bearish
                     }
 
-                /*
-                 * Candle wick
-                 */
                 drawLine(
-                    color = candleColor,
+                    color =
+                        candleColor,
+
                     start =
                         Offset(
-                            centerX,
-                            highY
+                            x,
+                            high
                         ),
+
                     end =
                         Offset(
-                            centerX,
-                            lowY
+                            x,
+                            low
                         ),
-                    strokeWidth = 1.5f
+
+                    strokeWidth =
+                        1.5f
                 )
 
-                val bodyTop =
+                val top =
                     min(
-                        openY,
-                        closeY
+                        open,
+                        close
                     )
 
-                val bodyBottom =
+                val bottom =
                     max(
-                        openY,
-                        closeY
+                        open,
+                        close
                     )
 
-                /*
-                 * Candle body
-                 */
                 drawRect(
-                    color = candleColor,
+                    color =
+                        candleColor,
+
                     topLeft =
                         Offset(
-                            centerX -
-                                candleWidth *
+                            x -
+                                width *
                                 0.32f,
-                            bodyTop
+
+                            top
                         ),
+
                     size =
                         Size(
                             width =
-                                candleWidth *
-                                    0.64f,
+                                width *
+                                0.64f,
+
                             height =
                                 max(
-                                    bodyBottom -
-                                        bodyTop,
+                                    bottom -
+                                        top,
+
                                     2f
                                 )
                         ),
-                    alpha = 0.88f
+
+                    alpha =
+                        0.88f
                 )
             }
 
-            /*
-             * EMA 12
-             */
-            drawIndicatorLine(
-                points = visible,
+            drawIndicator(
+                points =
+                    visible,
+
                 selector = {
                     it.emaFast
                 },
-                yMapper = ::y,
-                strokeWidth = 2.5f,
-                color = emaFastColor
+
+                mapper =
+                    ::mapY,
+
+                color =
+                    fast
             )
 
-            /*
-             * EMA 26
-             */
-            drawIndicatorLine(
-                points = visible,
+            drawIndicator(
+                points =
+                    visible,
+
                 selector = {
                     it.emaSlow
                 },
-                yMapper = ::y,
-                strokeWidth = 2.5f,
-                color = emaSlowColor
+
+                mapper =
+                    ::mapY,
+
+                color =
+                    slow
             )
         }
     }
 }
 
-private fun DrawScope.drawIndicatorLine(
+private fun DrawScope.drawIndicator(
     points: List<ChartPoint>,
-    selector: (ChartPoint) -> Double?,
-    yMapper: (Double) -> Float,
-    strokeWidth: Float,
+    selector:
+        (ChartPoint) -> Double?,
+    mapper:
+        (Double) -> Float,
     color: Color
 ) {
 
@@ -270,9 +296,10 @@ private fun DrawScope.drawIndicatorLine(
     var started =
         false
 
-    val pointWidth =
+    val width =
         size.width /
-            points.size.toFloat()
+            points.size
+                .toFloat()
 
     points.forEachIndexed {
             index,
@@ -284,11 +311,11 @@ private fun DrawScope.drawIndicatorLine(
 
         val x =
             index *
-                pointWidth +
-                pointWidth / 2f
+                width +
+                width / 2f
 
         val y =
-            yMapper(value)
+            mapper(value)
 
         if (!started) {
 
@@ -311,12 +338,16 @@ private fun DrawScope.drawIndicatorLine(
     if (started) {
 
         drawPath(
-            path = path,
-            color = color,
+            path =
+                path,
+
+            color =
+                color,
+
             style =
                 Stroke(
                     width =
-                        strokeWidth
+                        2.5f
                 )
         )
     }
