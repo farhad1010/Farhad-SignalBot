@@ -13,37 +13,69 @@ class SignalFactory {
     fun create(
         symbol: TradingSymbol,
         analysis: SignalAnalysisResult,
-        timeframeSeconds: Long,
         now: Instant = Instant.now()
     ): SignalState {
 
-        if (analysis.direction == SignalDirection.NEUTRAL) {
+        if (
+            analysis.direction ==
+            SignalDirection.NEUTRAL
+        ) {
             return SignalState.NoSignal(
-                analysis = analysis.snapshot
+                analysis =
+                    analysis.snapshot
             )
         }
 
-        val expiresAt =
-            now.plus(
-                Duration.ofSeconds(timeframeSeconds)
-            )
+        val seconds =
+            analysis.recommendedSeconds
+                .coerceIn(
+                    30L,
+                    180L
+                )
 
-        val signal = TradingSignal(
-            id = UUID.randomUUID().toString(),
-            symbol = symbol,
-            direction = analysis.direction,
-            strength = analysis.strength,
-            confidence = analysis.confidence,
-            generatedAt = now,
-            sourcePrice = analysis.snapshot.currentPrice,
-            timeframeSeconds = timeframeSeconds,
-            expiresAt = expiresAt,
-            reasons = analysis.reasons
-        )
+        val signal =
+            TradingSignal(
+                id =
+                    UUID.randomUUID()
+                        .toString(),
+
+                symbol =
+                    symbol,
+
+                direction =
+                    analysis.direction,
+
+                strength =
+                    analysis.strength,
+
+                confidence =
+                    analysis.confidence,
+
+                generatedAt =
+                    now,
+
+                sourcePrice =
+                    analysis.snapshot
+                        .currentPrice,
+
+                timeframeSeconds =
+                    seconds,
+
+                expiresAt =
+                    now.plus(
+                        Duration.ofSeconds(
+                            seconds
+                        )
+                    ),
+
+                reasons =
+                    analysis.reasons
+            )
 
         return SignalState.Ready(
             signal = signal,
-            analysis = analysis.snapshot
+            analysis =
+                analysis.snapshot
         )
     }
 }
