@@ -11,35 +11,34 @@ class MarketApiClient(
 
     suspend fun getMinuteBars(
         symbol: String,
-        limit: Int = 200
+        limit: Int = 500
     ): Result<PolygonBarsResponse> {
 
         return try {
-
-            val safeLimit =
-                limit.coerceIn(50, 500)
 
             val today =
                 LocalDate.now(ZoneOffset.UTC)
 
             val from =
-                today.minusDays(5)
-
-            val to =
-                today
+                today.minusDays(3)
 
             val response =
                 service.getMinuteBars(
                     ticker = symbol,
+                    multiplier = 1,
+                    timespan = "minute",
                     from = from.toString(),
-                    to = to.toString(),
-                    adjusted = true,
+                    to = today.toString(),
+                    adjusted = false,
                     sort = "asc",
-                    limit = safeLimit
+                    limit =
+                        limit.coerceIn(
+                            100,
+                            5000
+                        )
                 )
 
             when {
-
                 response.error != null ->
                     Result.failure(
                         MarketApiException.InvalidResponse(
@@ -51,7 +50,7 @@ class MarketApiClient(
                     Result.failure(
                         MarketApiException.InvalidResponse(
                             response.message
-                                ?: "No market candles were returned."
+                                ?: "No market data returned."
                         )
                     )
 
@@ -63,7 +62,6 @@ class MarketApiClient(
 
             Result.failure(
                 when (e.code()) {
-
                     401, 403 ->
                         MarketApiException.Unauthorized()
 
@@ -72,12 +70,12 @@ class MarketApiClient(
 
                     in 500..599 ->
                         MarketApiException.Server(
-                            "Market-data server error: ${e.code()}"
+                            "Market server error: ${e.code()}"
                         )
 
                     else ->
                         MarketApiException.Server(
-                            "Market-data request failed: ${e.code()}"
+                            "HTTP ${e.code()}"
                         )
                 }
             )
@@ -86,6 +84,7 @@ class MarketApiClient(
 
             Result.failure(
                 MarketApiException.Network(e)
+
             )
 
         } catch (e: Exception) {
