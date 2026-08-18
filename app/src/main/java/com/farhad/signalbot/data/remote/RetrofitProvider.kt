@@ -14,10 +14,6 @@ object RetrofitProvider {
         apiKey: String
     ): MarketApiClient {
 
-        require(apiKey.isNotBlank()) {
-            "Massive API key is missing."
-        }
-
         val client =
             OkHttpClient.Builder()
                 .connectTimeout(
@@ -35,22 +31,33 @@ object RetrofitProvider {
                 .retryOnConnectionFailure(true)
                 .addInterceptor { chain ->
 
-                    val request =
+                    val originalRequest =
                         chain.request()
 
-                    val url =
-                        request.url
+                    val requestBuilder =
+                        originalRequest
                             .newBuilder()
-                            .addQueryParameter(
-                                "apiKey",
-                                apiKey
-                            )
-                            .build()
+
+                    /*
+                     * Only attach the API key when it exists.
+                     * This prevents the application from crashing
+                     * during startup if the key is unavailable.
+                     */
+                    if (apiKey.isNotBlank()) {
+                        val url =
+                            originalRequest.url
+                                .newBuilder()
+                                .addQueryParameter(
+                                    "apiKey",
+                                    apiKey.trim()
+                                )
+                                .build()
+
+                        requestBuilder.url(url)
+                    }
 
                     chain.proceed(
-                        request.newBuilder()
-                            .url(url)
-                            .build()
+                        requestBuilder.build()
                     )
                 }
                 .build()
