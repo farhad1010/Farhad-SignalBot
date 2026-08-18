@@ -23,14 +23,25 @@ android {
             "androidx.test.runner.AndroidJUnitRunner"
 
         /*
-         * API key is supplied through gradle.properties.
+         * Massive API key is supplied by the GitHub Actions
+         * environment variable MASSIVE_API_KEY.
          *
-         * Do NOT put the real key directly inside source code.
+         * The key is NOT written directly into this source file.
+         */
+        buildConfigField(
+            "String",
+            "MASSIVE_API_KEY",
+            "\"${System.getenv("MASSIVE_API_KEY") ?: ""}\""
+        )
+
+        /*
+         * Backward compatibility for any existing code that
+         * still references BuildConfig.MARKET_API_KEY.
          */
         buildConfigField(
             "String",
             "MARKET_API_KEY",
-            "\"${project.findProperty("MARKET_API_KEY") ?: ""}\""
+            "\"${System.getenv("MASSIVE_API_KEY") ?: ""}\""
         )
     }
 
@@ -81,9 +92,7 @@ android {
 
 dependencies {
 
-    // --------------------------------------------------
     // Android core
-    // --------------------------------------------------
 
     implementation(
         "androidx.core:core-ktx:1.16.0"
@@ -98,9 +107,7 @@ dependencies {
     )
 
 
-    // --------------------------------------------------
     // Jetpack Compose
-    // --------------------------------------------------
 
     implementation(
         platform(
@@ -125,36 +132,28 @@ dependencies {
     )
 
 
-    // --------------------------------------------------
     // Navigation
-    // --------------------------------------------------
 
     implementation(
         "androidx.navigation:navigation-compose:2.9.0"
     )
 
 
-    // --------------------------------------------------
     // ViewModel
-    // --------------------------------------------------
 
     implementation(
         "androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1"
     )
 
 
-    // --------------------------------------------------
     // Kotlin Coroutines
-    // --------------------------------------------------
 
     implementation(
         "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
     )
 
 
-    // --------------------------------------------------
     // Retrofit
-    // --------------------------------------------------
 
     implementation(
         "com.squareup.retrofit2:retrofit:3.0.0"
@@ -165,26 +164,18 @@ dependencies {
     )
 
 
-    // --------------------------------------------------
     // OkHttp
-    // --------------------------------------------------
 
     implementation(
         "com.squareup.okhttp3:okhttp:4.12.0"
     )
 
-    /*
-     * Logging interceptor is kept available for development,
-     * but production code must not log API credentials.
-     */
     implementation(
         "com.squareup.okhttp3:logging-interceptor:4.12.0"
     )
 
 
-    // --------------------------------------------------
     // Room database
-    // --------------------------------------------------
 
     implementation(
         "androidx.room:room-runtime:2.7.1"
@@ -199,18 +190,14 @@ dependencies {
     )
 
 
-    // --------------------------------------------------
     // Unit tests
-    // --------------------------------------------------
 
     testImplementation(
         "junit:junit:4.13.2"
     )
 
 
-    // --------------------------------------------------
     // Android tests
-    // --------------------------------------------------
 
     androidTestImplementation(
         "androidx.test.ext:junit:1.2.1"
@@ -221,9 +208,7 @@ dependencies {
     )
 
 
-    // --------------------------------------------------
     // Compose tooling
-    // --------------------------------------------------
 
     debugImplementation(
         "androidx.compose.ui:ui-tooling"
