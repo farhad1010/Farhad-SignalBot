@@ -11,15 +11,17 @@ class MarketApiClient(
 
     suspend fun getSecondBars(
         symbol: String,
-        limit: Int = 5000
+        limit: Int
     ): Result<PolygonBarsResponse> {
 
         return try {
 
+            val ticker = normalizeForexTicker(symbol)
+
             val today = LocalDate.now(ZoneOffset.UTC)
 
             val response = service.getBars(
-                ticker = symbol,
+                ticker = ticker,
                 multiplier = 1,
                 timespan = "second",
                 from = today.minusDays(2).toString(),
@@ -43,7 +45,7 @@ class MarketApiClient(
                     Result.failure(
                         MarketApiException.InvalidResponse(
                             response.message
-                                ?: "No live market data returned."
+                                ?: "No market data returned for $ticker."
                         )
                     )
                 }
@@ -51,10 +53,9 @@ class MarketApiClient(
                 else -> {
                     Result.success(
                         response.copy(
-                            results = response.results
-                                .sortedBy {
-                                    it.timestampMillis
-                                }
+                            results = response.results.sortedBy {
+                                it.timestampMillis
+                            }
                         )
                     )
                 }
@@ -73,12 +74,12 @@ class MarketApiClient(
 
                     in 500..599 ->
                         MarketApiException.Server(
-                            "Market data server error."
+                            "Massive market-data server error."
                         )
 
                     else ->
                         MarketApiException.Server(
-                            "HTTP ${e.code()}"
+                            "Massive HTTP ${e.code()}"
                         )
                 }
             )
@@ -104,9 +105,11 @@ class MarketApiClient(
 
         return try {
 
+            val ticker = normalizeForexTicker(symbol)
+
             val response =
                 service.getPreviousDayBar(
-                    ticker = symbol,
+                    ticker = ticker,
                     adjusted = false
                 )
 
@@ -119,7 +122,7 @@ class MarketApiClient(
 
                 Result.failure(
                     MarketApiException.InvalidResponse(
-                        "Previous market close unavailable."
+                        "Previous close unavailable for $ticker."
                     )
                 )
 
@@ -139,9 +142,14 @@ class MarketApiClient(
                     429 ->
                         MarketApiException.RateLimited()
 
+                    in 500..599 ->
+                        MarketApiException.Server(
+                            "Massive market-data server error."
+                        )
+
                     else ->
                         MarketApiException.Server(
-                            "Previous close HTTP ${e.code()}"
+                            "Massive HTTP ${e.code()}"
                         )
                 }
             )
@@ -157,6 +165,29 @@ class MarketApiClient(
             Result.failure(
                 MarketApiException.Unknown(e)
             )
+        }
+    }
+
+    private fun normalizeForexTicker(
+        symbol: String
+    ): String {
+
+        val clean = symbol
+            .trim()
+            .uppercase()
+            .replace("/", "")
+            .replace("-", "")
+
+        return when {
+
+            clean.startsWith("C:") ->
+                clean
+
+            clean.length == 6 ->
+                "C:$clean"
+
+            else ->
+                symbol.trim()
         }
     }
 }
